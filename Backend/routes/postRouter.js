@@ -3,7 +3,10 @@ const path = require("path")
 const route = express.Router()
 const Post = require("../models/postModel")
 const multer = require("multer")
-
+let { readdir, mkdir } = require('fs');
+const { promisify } =  require('util');
+readdir = promisify(readdir);
+mkdir = promisify(mkdir);
 route.get("/", async(req,res)=>{
     try {
         const getpost = await Post.find()
@@ -14,8 +17,23 @@ route.get("/", async(req,res)=>{
 })
 
 const storage = multer.diskStorage({
-    destination(req,file,cb){
-        cb(null,"uploads/")
+    async destination(req,file,cb){
+        const path = './Backend/uploads';
+        try {
+            await readdir(path);
+            cb(null,path);   
+        } catch (error) {
+            console.log(error);
+            if(error.code === 'ENOENT') {
+                await mkdir(path);
+                cb(null,path)
+            } else {
+                cb(error, null);
+            }
+        }
+        
+
+        
     },
     filename(req,file,cb){
         cb(null, `${file.fieldname}-${Date.now()}${path.extname(file.originalname)}`)
@@ -37,7 +55,7 @@ const upload = multer({
 })
 
 route.post("/upload",upload.single("image"),async(req,res)=>{
-    res.send(`/${req.file.path}`)
+    res.send(`${req.file.path}`)
 })
 
 route.post("/",async(req,res)=>{
